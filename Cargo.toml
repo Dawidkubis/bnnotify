@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 notify-rust = "3.6.3"
+anyhow = "1.0.26"
