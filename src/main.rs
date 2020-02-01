@@ -1,12 +1,16 @@
-extern crate notify_rust;
-#[macro_use]
-extern crate anyhow;
-
 use anyhow::{Error, Result};
+use lazy_static::lazy_static;
 use notify_rust::Notification;
-use notify_rust::Timeout;
 use std::process::Command;
 use std::str::FromStr;
+use std::thread::sleep;
+use std::time::Duration;
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+struct Args {
+	min: usize,
+}
 
 #[derive(Debug)]
 struct Acpi {
@@ -18,6 +22,20 @@ impl Acpi {
 		let acpi = Command::new("acpi").output()?.stdout;
 		let acpi = String::from_utf8(acpi)?;
 		acpi.parse()
+	}
+
+	fn notify(&self) -> Vec<Notification> {
+		self.batteries.iter()
+			.map(|x| x.notify())
+			.filter(Option::is_some)
+			.map(|x| {
+				if let Some(s) = x {
+					s
+				} else {
+					panic!("You have now entered a place of code I once thought is impossible to reach. Well done and good luck fixing this.")
+				}
+			})
+			.collect()
 	}
 }
 
@@ -41,14 +59,24 @@ struct Battery {
 	time: String,
 }
 
+impl Battery {
+	fn notify(&self) -> Option<Notification> {
+		if self.percentage < ARGS.min {
+			return Some(
+				Notification::new()
+					.summary(&format!("BATTERY {} LOW: {}%", self.id, self.percentage))
+					.finalize(),
+			);
+		}
+		None
+	}
+}
+
 impl FromStr for Battery {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let mut acpi: Vec<String> = s
-			.split_ascii_whitespace()
-			.map(|x| String::from(x))
-			.collect();
+		let mut acpi: Vec<String> = s.split_ascii_whitespace().map(String::from).collect();
 
 		let id: usize = {
 			acpi[1].pop();
@@ -70,15 +98,15 @@ impl FromStr for Battery {
 	}
 }
 
+lazy_static! {
+	static ref ARGS: Args = Args::from_args();
+}
+
 fn main() -> Result<()> {
-	//Notification::new()
-	//.summary("Firefox News")
-	//.body("This will almost look like a real firefox notification.")
-	//.icon("firefox")
-	//.timeout(Timeout::Milliseconds(6000))
-	//.show()?;
+	loop {
+		sleep(Duration::from_secs(1));
+		let acpi = Acpi::get()?;
 
-	println!("{:?}", Acpi::get()?);
-
-	Ok(())
+		acpi.notify().into_iter().map(|x| x.show().unwrap()).count();
+	}
 }

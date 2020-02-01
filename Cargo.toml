@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 notify-rust = "3.6.3"
 anyhow = "1.0.26"
+structopt = "0.3.9"
+lazy_static = "1.4.0"
