@@ -1,6 +1,6 @@
 use anyhow::{Error, Result};
 use lazy_static::lazy_static;
-use notify_rust::Notification;
+use notify_rust::{Notification, Timeout};
 use std::process::Command;
 use std::str::FromStr;
 use std::thread::sleep;
@@ -61,10 +61,11 @@ struct Battery {
 
 impl Battery {
 	fn notify(&self) -> Option<Notification> {
-		if self.percentage < ARGS.min {
+		if self.percentage < ARGS.min && &self.status == "Discharging" {
 			return Some(
 				Notification::new()
 					.summary(&format!("BATTERY {} LOW: {}%", self.id, self.percentage))
+					.timeout(Timeout::Never)
 					.finalize(),
 			);
 		}
@@ -89,9 +90,15 @@ impl FromStr for Battery {
 			acpi[3].parse()?
 		};
 
+		let status: String = {
+			let mut x = acpi[2].clone();
+			x.pop();
+			x
+		};
+
 		Ok(Battery {
 			id,
-			status: acpi[2].clone(),
+			status,
 			percentage,
 			time: acpi[4].clone(),
 		})
@@ -105,7 +112,7 @@ lazy_static! {
 fn main() -> Result<()> {
 	loop {
 		sleep(Duration::from_secs(1));
-		let acpi = Acpi::get()?;
+		let acpi = dbg!(Acpi::get()?);
 
 		acpi.notify().into_iter().map(|x| x.show().unwrap()).count();
 	}
