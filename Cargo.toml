@@ -3,6 +3,9 @@ name = "sstop"
 version = "0.1.0"
 authors = ["Dawid J. Kubis <dawid.kubis3@gmail.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/Dawidkubis/sstop/"
+description = "a simple battery notification utility"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
