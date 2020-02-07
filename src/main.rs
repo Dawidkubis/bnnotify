@@ -54,14 +54,13 @@ impl FromStr for Acpi {
 #[derive(Debug)]
 struct Battery {
 	id: usize,
-	status: String,
+	charging: bool,
 	percentage: usize,
-	time: String,
 }
 
 impl Battery {
 	fn notify(&self) -> Option<Notification> {
-		if self.percentage < ARGS.min && &self.status == "Discharging" {
+		if self.percentage < ARGS.min && !self.charging {
 			return Some(
 				Notification::new()
 					.summary(&format!("BATTERY {} LOW: {}%", self.id, self.percentage))
@@ -77,7 +76,11 @@ impl FromStr for Battery {
 	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let mut acpi: Vec<String> = s.split_ascii_whitespace().map(String::from).collect();
+		let mut acpi: Vec<String> = s
+			.replace(",", "")
+			.split_ascii_whitespace()
+			.map(String::from)
+			.collect();
 
 		let id: usize = {
 			acpi[1].pop();
@@ -86,21 +89,15 @@ impl FromStr for Battery {
 
 		let percentage: usize = {
 			acpi[3].pop();
-			acpi[3].pop();
 			acpi[3].parse()?
 		};
 
-		let status: String = {
-			let mut x = acpi[2].clone();
-			x.pop();
-			x
-		};
+		let charging: bool = if &acpi[2] == "Charging" { true } else { false };
 
 		Ok(Battery {
 			id,
-			status,
+			charging,
 			percentage,
-			time: acpi[4].clone(),
 		})
 	}
 }
