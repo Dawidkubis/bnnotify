@@ -1,5 +1,4 @@
 use anyhow::{Error, Result};
-use lazy_static::lazy_static;
 use notify_rust::{Notification, Timeout};
 use std::process::Command;
 use std::str::FromStr;
@@ -24,18 +23,8 @@ impl Acpi {
 		acpi.parse()
 	}
 
-	fn notify(&self) -> Vec<Notification> {
-		self.batteries.iter()
-			.map(|x| x.notify())
-			.filter(Option::is_some)
-			.map(|x| {
-				if let Some(s) = x {
-					s
-				} else {
-					panic!("You have now entered a place of code I once thought is impossible to reach. Well done and good luck fixing this.")
-				}
-			})
-			.collect()
+	fn notify(&self, min: usize) -> Vec<&Battery> {
+		self.batteries.iter().filter(|&x| x.is_low(min)).collect()
 	}
 }
 
@@ -59,16 +48,15 @@ struct Battery {
 }
 
 impl Battery {
-	fn notify(&self) -> Option<Notification> {
-		if self.percentage < ARGS.min && !self.charging {
-			return Some(
-				Notification::new()
-					.summary(&format!("BATTERY {} LOW: {}%", self.id, self.percentage))
-					.timeout(Timeout::Never)
-					.finalize(),
-			);
-		}
-		None
+	fn notify(&self) -> Notification {
+		Notification::new()
+			.summary(&format!("BATTERY {} LOW: {}%", self.id, self.percentage))
+			.timeout(Timeout::Never)
+			.finalize()
+	}
+
+	fn is_low(&self, min: usize) -> bool {
+		self.percentage < min && !self.charging
 	}
 }
 
@@ -102,15 +90,31 @@ impl FromStr for Battery {
 	}
 }
 
-lazy_static! {
-	static ref ARGS: Args = Args::from_args();
-}
-
 fn main() -> Result<()> {
+	let args = Args::from_args();
+	let mut notified: Vec<usize> = vec![];
 	loop {
 		sleep(Duration::from_secs(1));
-		let acpi = dbg!(Acpi::get()?);
+		let acpi = Acpi::get()?;
 
-		acpi.notify().into_iter().map(|x| x.show().unwrap()).count();
+		acpi.notify(args.min)
+			.into_iter()
+			.filter(|x| {
+				if notified.contains(&x.id) {
+					if x.percentage > args.min {
+						notified = notified
+							.clone()
+							.into_iter()
+							.filter(|y| y == &x.id)
+							.collect();
+					}
+					false
+				} else {
+					notified.push(x.id);
+					true
+				}
+			})
+			.map(|x| x.notify().show().unwrap())
+			.count();
 	}
 }
