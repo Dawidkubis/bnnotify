@@ -105,7 +105,7 @@ fn main() -> Result<()> {
 						notified = notified
 							.clone()
 							.into_iter()
-							.filter(|y| y == &x.id)
+							.filter(|y| y != &x.id)
 							.collect();
 					}
 					false

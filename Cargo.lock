@@ -473,7 +473,6 @@ name = "sstop"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "lazy_static",
  "notify-rust",
  "structopt",
 ]
