@@ -95,23 +95,21 @@ fn main() -> Result<()> {
 
 		acpi.batteries
 			.iter()
-			.filter(|x| {
-				match (x.is_low(args.min), notified.contains(&x.id)) {
-					(true, true) => false,
-					(true, false) => {
-						notified.push(x.id);
-						true
-					},
-					(false, true) => {
-						notified = notified
-							.clone()
-							.into_iter()
-							.filter(|y| y != &x.id)
-							.collect();
-						false
-					},
-					(false, false) => false,
+			.filter(|x| match (x.is_low(args.min), notified.contains(&x.id)) {
+				(true, true) => false,
+				(true, false) => {
+					notified.push(x.id);
+					true
 				}
+				(false, true) => {
+					notified = notified
+						.clone()
+						.into_iter()
+						.filter(|y| y != &x.id)
+						.collect();
+					false
+				}
+				(false, false) => false,
 			})
 			.map(|x| x.notify().show().unwrap())
 			.count();
