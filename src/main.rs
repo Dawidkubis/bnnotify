@@ -22,10 +22,6 @@ impl Acpi {
 		let acpi = String::from_utf8(acpi)?;
 		acpi.parse()
 	}
-
-	fn notify(&self, min: usize) -> Vec<&Battery> {
-		self.batteries.iter().filter(|&x| x.is_low(min)).collect()
-	}
 }
 
 impl FromStr for Acpi {
@@ -97,21 +93,19 @@ fn main() -> Result<()> {
 		sleep(Duration::from_secs(1));
 		let acpi = Acpi::get()?;
 
-		acpi.notify(args.min)
-			.into_iter()
+		acpi.batteries
+			.iter()
 			.filter(|x| {
-				if notified.contains(&x.id) {
-					if x.percentage > args.min {
-						notified = notified
-							.clone()
-							.into_iter()
-							.filter(|y| y != &x.id)
-							.collect();
-					}
-					false
-				} else {
-					notified.push(x.id);
+				if x.is_low(args.min) {
+					if !notified.contains(&x.id) {notified.push(x.id)};
 					true
+				} else {
+					notified = notified
+						.clone()
+						.into_iter()
+						.filter(|y| y != &x.id)
+						.collect();
+					false
 				}
 			})
 			.map(|x| x.notify().show().unwrap())
